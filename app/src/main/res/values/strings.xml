@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">Fotomat</string>
     <string name="title_activity_maps">Fotomat</string>
+
+    <string name="title_activity_photo">PhotoActivity</string>
+    <string name="dummy_button">Take Picture</string>
+    <string name="dummy_content">DUMMY\nCONTENT</string>
 </resources>

@@ -1,5 +1,6 @@
 package edu.tmcc.cit230.fotomat;
 
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.support.annotation.NonNull;
@@ -8,6 +9,8 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -26,6 +29,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private static final int REQUEST_CURRENT_LOCATION = 1;
     private static final String TAG = "Fotomat:MapActivity";
+    private static final int TAKE_A_PHOTO = 1;
     private GoogleMap mMap;
     private int permissionRequestCount;
     private GoogleApiClient mGoogleApiClient;
@@ -49,8 +53,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     .addApi(LocationServices.API)
                     .build();
         }
+
+        Button takePhotoButton = (Button) findViewById(R.id.takeAPhoto);
+
+        takePhotoButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MapsActivity.this, PhotoActivity.class);
+                startActivityForResult(intent, TAKE_A_PHOTO);
+            }
+        });
+
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == TAKE_A_PHOTO) {
+            if (resultCode == RESULT_OK) {
+                String photoUrl = data.getStringExtra(PhotoActivity.EXTRA_PHOTO_URL);
+                // TODO do something with the photo URL
+                Log.d(MapsActivity.TAG, "photoUrl: " + photoUrl);
+            }
+        }
+    }
 
     /**
      * Manipulates the map once available.
