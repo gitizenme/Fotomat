@@ -27,6 +27,10 @@ import java.util.Date;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
+    // TODO: migrate code from MapsAndLocation example to this activity
+    // TODO: load photo and generate a thumbnail, create Marker, add to Map
+
+
     private static final int REQUEST_CURRENT_LOCATION = 1;
     private static final String TAG = "Fotomat:MapActivity";
     private static final int TAKE_A_PHOTO = 1;
@@ -72,7 +76,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             if (resultCode == RESULT_OK) {
                 String photoUrl = data.getStringExtra(PhotoActivity.EXTRA_PHOTO_URL);
                 // TODO do something with the photo URL
+                // Ex: photoUrl: /storage/emulated/0/Pictures/JPEG_20170402_110614_1505746453.jpg
                 Log.d(MapsActivity.TAG, "photoUrl: " + photoUrl);
+
             }
         }
     }
