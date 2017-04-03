@@ -134,7 +134,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (requestCode == TAKE_A_PHOTO) {
             if (resultCode == RESULT_OK) {
                 mCurrentPhotoPath = data.getStringExtra(PhotoActivity.EXTRA_PHOTO_URL);
-                AddMarkerToMap("Photo", mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+                updateMapUI("Photo");
             }
         }
     }
@@ -172,7 +172,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Marker marker = mMap.addMarker(new MarkerOptions()
                 .position(latLng)
                 .anchor(0.5f, 1));
-        AddPolyLineToMap(mLastLocation, mCurrentLocation);
         mMarkerArray.add(marker);
 
         if (mCurrentPhotoPath != null && mCurrentPhotoPath.isEmpty() == false) {
@@ -183,7 +182,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             marker.setIcon(BitmapDescriptorFactory.fromBitmap(bitmap));
             marker.setTitle(String.format("%s-%s: %.3f,%.3f", locationTitle, mMarkerArray.size(), lat, lon));
-            marker.setTag(new PhotoMarkerInfo(markerPhotoPath, latLng));
+            marker.setTag(new PhotoMarkerInfo("Photo", latLng, markerPhotoPath));
         } else {
             marker.setTitle(locationTitle);
             marker.setTag(new LocationMarkerInfo(locationTitle, latLng));
@@ -325,13 +324,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
         if (location != null) {
             Log.d(MapsActivity.TAG, String.format("Last Known Location: LAT=%s, LON=%s", String.valueOf(location.getLatitude()), String.valueOf(location.getLongitude())));
-            updateMapUI("Current Location");
+            updateMapUI("Location");
             mLastLocation = mCurrentLocation;
             mCurrentLocation = location;
         }
     }
 
-    private View prepareInfoView(Marker marker){
+    private View prepareInfoView(Marker marker) {
         Object o = marker.getTag();
 
 
@@ -341,18 +340,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         infoView.setOrientation(LinearLayout.HORIZONTAL);
         infoView.setLayoutParams(infoViewParams);
 
+        String markerDateTime = "";
         if (o instanceof PhotoMarkerInfo) {
             PhotoMarkerInfo photoMarkerInfo = (PhotoMarkerInfo) o;
-            Bitmap bitmap = getPhotoSized(photoMarkerInfo.currentPhotoPath, 160);
+            Bitmap bitmap = getPhotoSized(photoMarkerInfo.getCurrentPhotoPath(), 160);
             ImageView infoImageView = new ImageView(MapsActivity.this);
             infoImageView.setImageBitmap(bitmap);
             infoView.addView(infoImageView);
-        }
-        else {
+            markerDateTime = String.format("Taken: %s", DateFormat.getDateTimeInstance().format(photoMarkerInfo.getTimestamp()));
+        } else {
+            LocationMarkerInfo locationMarkerInfo = (LocationMarkerInfo) o;
             ImageView infoImageView = new ImageView(MapsActivity.this);
             Drawable drawable = getResources().getDrawable(android.R.drawable.ic_dialog_info, this.getTheme());
             infoImageView.setImageDrawable(drawable);
             infoView.addView(infoImageView);
+            markerDateTime = String.format("Visited: %s", DateFormat.getDateTimeInstance().format(locationMarkerInfo.getTimestamp()));
         }
 
         LinearLayout subInfoView = new LinearLayout(MapsActivity.this);
@@ -363,10 +365,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         TextView subInfoLat = new TextView(MapsActivity.this);
         subInfoLat.setText(String.format("Lat: %.3f", marker.getPosition().latitude));
+        subInfoView.addView(subInfoLat);
+
         TextView subInfoLng = new TextView(MapsActivity.this);
         subInfoLng.setText(String.format("Lng: %.3f", marker.getPosition().longitude));
-        subInfoView.addView(subInfoLat);
         subInfoView.addView(subInfoLng);
+
+        if (!markerDateTime.isEmpty()) {
+            TextView photoTimeTextView = new TextView(MapsActivity.this);
+            photoTimeTextView.setText(markerDateTime);
+            subInfoView.addView(photoTimeTextView);
+        }
+
         infoView.addView(subInfoView);
 
         return infoView;
@@ -385,10 +395,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private class LocationMarkerInfo {
         private final String locationTitle;
         private final LatLng latLng;
+        private final Date timestamp;
 
         public LocationMarkerInfo(String locationTitle, LatLng latLng) {
             this.locationTitle = locationTitle;
             this.latLng = latLng;
+            timestamp = new Date();
         }
 
         public String getLocationTitle() {
@@ -398,24 +410,24 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         public LatLng getLatLng() {
             return latLng;
         }
+
+        public Date getTimestamp() {
+            return timestamp;
+        }
     }
 
-    private class PhotoMarkerInfo {
+    private class PhotoMarkerInfo extends LocationMarkerInfo {
         private final String currentPhotoPath;
-        private final LatLng latLng;
 
-        public PhotoMarkerInfo(String currentPhotoPath, LatLng latLng) {
+        public PhotoMarkerInfo(String locationTitle, LatLng latLng, String currentPhotoPath) {
+            super(locationTitle, latLng);
             this.currentPhotoPath = currentPhotoPath;
-            this.latLng = latLng;
         }
 
         public String getCurrentPhotoPath() {
             return currentPhotoPath;
         }
 
-        public LatLng getLatLng() {
-            return latLng;
-        }
     }
 
 }
