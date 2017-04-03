@@ -5,15 +5,14 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.location.Location;
+import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -37,11 +36,6 @@ import java.util.ArrayList;
 import java.util.Date;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, LocationListener, GoogleApiClient.OnConnectionFailedListener, GoogleMap.OnMarkerClickListener, LocationSource.OnLocationChangedListener {
-
-    // TODO: migrate code from MapsAndLocation example to this activity
-    // TODO: load photo and generate a thumbnail, create Marker, add to Map
-
-
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "requestLocationUpdates";
     private static final String LOCATION_KEY = "location";
     private static final String LAST_UPDATED_TIME_STRING_KEY = "lastUpdatedTimeString";
@@ -126,7 +120,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     protected void stopLocationUpdates() {
-        if(mGoogleApiClient.isConnected()) {
+        if (mGoogleApiClient.isConnected()) {
             LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
         }
     }
@@ -179,7 +173,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         AddPolyLineToMap(mLastLocation, mCurrentLocation);
         mMarkerArray.add(marker);
 
-        if(mCurrentPhotoPath != null && mCurrentPhotoPath.isEmpty() == false) {
+        if (mCurrentPhotoPath != null && mCurrentPhotoPath.isEmpty() == false) {
             String markerPhoto = mCurrentPhotoPath;
             mCurrentPhotoPath = null;
 
@@ -190,7 +184,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             int photoH = bmOptions.outHeight;
 
             // Determine how much to scale down the image
-            int scaleFactor = Math.min(photoW/80, photoH/80);
+            int scaleFactor = Math.min(photoW / 80, photoH / 80);
 
             // Decode the image file into a Bitmap sized to fill the View
             bmOptions.inJustDecodeBounds = false;
@@ -200,24 +194,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             marker.setIcon(BitmapDescriptorFactory.fromBitmap(bitmap));
             marker.setTitle(String.format("%s-%s: %.3f,%.3f", locationTitle, mMarkerArray.size(), lat, lon));
             marker.setTag(new PhotoMarkerInfo(mCurrentPhotoPath, latLng));
-        }
-        else {
+        } else {
             marker.setTitle(locationTitle);
             marker.setTag(new LocationMarkerInfo(locationTitle, latLng));
         }
 
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(new CameraPosition.Builder()
-            .target(latLng)
-            .zoom(13)   // City
-            .bearing(0) // North
-            .tilt(30)
-            .build()));
+                .target(latLng)
+                .zoom(13)   // City
+                .bearing(0) // North
+                .tilt(30)
+                .build()));
     }
 
     private void requestPermissions() {
         ActivityCompat.requestPermissions(
                 this,
-                new String[]{ android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION},
+                new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION},
                 REQUEST_CURRENT_LOCATION
         );
     }
@@ -234,7 +227,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Log.d(MapsActivity.TAG, String.format("Last Known Location: LAT=%s, LON=%s", String.valueOf(mCurrentLocation.getLatitude()), String.valueOf(mCurrentLocation.getLongitude())));
             onLocationChanged(mCurrentLocation);
             updateMapUI("Location");
-            if(mLastLocation == null) {
+            if (mLastLocation == null) {
                 mLastLocation = mCurrentLocation;
             }
         }
@@ -242,7 +235,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void updateMapUI(String locationTitle) {
-        if(mCurrentLocation == null || mLastLocation == null) {
+        if (mCurrentLocation == null || mLastLocation == null) {
             return;
         }
         AddMarkerToMap(locationTitle, mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
@@ -250,10 +243,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void AddPolyLineToMap(Location mLastLocation, Location mCurrentLocation) {
-        if(mCurrentLocation == null || mLastLocation == null) {
+        if (mCurrentLocation == null || mLastLocation == null) {
             return;
         }
-        if(mLastLocation.distanceTo(mCurrentLocation) > 3.0f) { // distance in meters
+        if (mLastLocation.distanceTo(mCurrentLocation) > 3.0f) { // distance in meters
             mMap.addPolyline(new PolylineOptions()
                     .clickable(true)
                     .add(
@@ -282,7 +275,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        if(requestCode == REQUEST_CURRENT_LOCATION) {
+        if (requestCode == REQUEST_CURRENT_LOCATION) {
             if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions();
             }
@@ -331,11 +324,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public boolean onMarkerClick(Marker marker) {
         Object o = marker.getTag();
 
-        if(o instanceof PhotoMarkerInfo) {
+        if (o instanceof PhotoMarkerInfo) {
             PhotoMarkerInfo photoMarkerInfo = (PhotoMarkerInfo) o;
             // TODO display detail
-        }
-        else if(o instanceof LocationMarkerInfo) {
+        } else if (o instanceof LocationMarkerInfo) {
             LocationMarkerInfo locationMarkerInfo = (LocationMarkerInfo) o;
             // TODO display detail
         }
