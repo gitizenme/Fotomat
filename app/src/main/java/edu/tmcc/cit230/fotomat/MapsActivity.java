@@ -2,6 +2,8 @@ package edu.tmcc.cit230.fotomat;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -23,6 +25,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.LocationSource;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -30,6 +33,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
 
 import java.text.DateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, LocationListener, GoogleApiClient.OnConnectionFailedListener, GoogleMap.OnMarkerClickListener, LocationSource.OnLocationChangedListener {
@@ -52,6 +56,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private String mLastUpdateTime;
     private boolean mRequestingLocationUpdates = true;
     private LocationRequest mLocationRequest;
+    private String mCurrentPhotoPath;
+    private ArrayList<Marker> mMarkerArray = new ArrayList<>();
 
     public MapsActivity() {
         mLocationRequest = LocationRequest.create();
@@ -129,11 +135,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == TAKE_A_PHOTO) {
             if (resultCode == RESULT_OK) {
-                String photoUrl = data.getStringExtra(PhotoActivity.EXTRA_PHOTO_URL);
+                mCurrentPhotoPath = data.getStringExtra(PhotoActivity.EXTRA_PHOTO_URL);
                 // TODO do something with the photo URL
                 // Ex: photoUrl: /storage/emulated/0/Pictures/JPEG_20170402_110614_1505746453.jpg
-                Log.d(MapsActivity.TAG, "photoUrl: " + photoUrl);
-
+                Log.d(MapsActivity.TAG, "photoUrl: " + mCurrentPhotoPath);
+                AddMarkerToMap("Photo", mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
             }
         }
     }
@@ -156,7 +162,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         if (BuildConfig.DEBUG) {
-            MockLocationSource source = new MockLocationSource(mCurrentLocation);
+            MockLocationSource source = new MockLocationSource(mCurrentLocation, 20);
             source.activate(this);
         }
 
@@ -164,14 +170,45 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
 
-    private void AddMarkerToMap(String title, double lat, double lon) {
+    private void AddMarkerToMap(String locationTitle, double lat, double lon) {
 
         LatLng latLng = new LatLng(lat, lon);
-        Marker marker = mMap.addMarker(new MarkerOptions().position(latLng).title(title));
-        marker.setTag(0);
+        Marker marker = mMap.addMarker(new MarkerOptions()
+                .position(latLng)
+                .anchor(0.5f, 1));
+        AddPolyLineToMap(mLastLocation, mCurrentLocation);
+        mMarkerArray.add(marker);
+
+        if(mCurrentPhotoPath != null && mCurrentPhotoPath.isEmpty() == false) {
+            String markerPhoto = mCurrentPhotoPath;
+            mCurrentPhotoPath = null;
+
+            BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+            bmOptions.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(markerPhoto, bmOptions);
+            int photoW = bmOptions.outWidth;
+            int photoH = bmOptions.outHeight;
+
+            // Determine how much to scale down the image
+            int scaleFactor = Math.min(photoW/80, photoH/80);
+
+            // Decode the image file into a Bitmap sized to fill the View
+            bmOptions.inJustDecodeBounds = false;
+            bmOptions.inSampleSize = scaleFactor;
+
+            Bitmap bitmap = BitmapFactory.decodeFile(markerPhoto, bmOptions);
+            marker.setIcon(BitmapDescriptorFactory.fromBitmap(bitmap));
+            marker.setTitle(String.format("%s-%s: %.3f,%.3f", locationTitle, mMarkerArray.size(), lat, lon));
+            marker.setTag(new PhotoMarkerInfo(mCurrentPhotoPath, latLng));
+        }
+        else {
+            marker.setTitle(locationTitle);
+            marker.setTag(new LocationMarkerInfo(locationTitle, latLng));
+        }
+
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(new CameraPosition.Builder()
             .target(latLng)
-            .zoom(12)   // City
+            .zoom(13)   // City
             .bearing(0) // North
             .tilt(30)
             .build()));
@@ -196,7 +233,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (mCurrentLocation != null) {
             Log.d(MapsActivity.TAG, String.format("Last Known Location: LAT=%s, LON=%s", String.valueOf(mCurrentLocation.getLatitude()), String.valueOf(mCurrentLocation.getLongitude())));
             onLocationChanged(mCurrentLocation);
-            updateMapUI("Current Location");
+            updateMapUI("Location");
             if(mLastLocation == null) {
                 mLastLocation = mCurrentLocation;
             }
@@ -281,33 +318,65 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onLocationChanged(Location location) {
         Log.d(MapsActivity.TAG, "Potential location change...");
-            mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
-            if (location != null) {
-                Log.d(MapsActivity.TAG, String.format("Last Known Location: LAT=%s, LON=%s", String.valueOf(location.getLatitude()), String.valueOf(location.getLongitude())));
-                updateMapUI("Current Location");
-                mLastLocation = mCurrentLocation;
-                mCurrentLocation = location;
-            }
+        mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
+        if (location != null) {
+            Log.d(MapsActivity.TAG, String.format("Last Known Location: LAT=%s, LON=%s", String.valueOf(location.getLatitude()), String.valueOf(location.getLongitude())));
+            updateMapUI("Current Location");
+            mLastLocation = mCurrentLocation;
+            mCurrentLocation = location;
+        }
     }
 
     @Override
     public boolean onMarkerClick(Marker marker) {
-        // Retrieve the data from the marker.
-        Integer clickCount = (Integer) marker.getTag();
+        Object o = marker.getTag();
 
-        // Check if a click count was set, then display the click count.
-        if (clickCount != null) {
-            clickCount = clickCount + 1;
-            marker.setTag(clickCount);
-            Toast.makeText(this,
-                    marker.getTitle() +
-                            " has been clicked " + clickCount + " times.",
-                    Toast.LENGTH_LONG).show();
+        if(o instanceof PhotoMarkerInfo) {
+            PhotoMarkerInfo photoMarkerInfo = (PhotoMarkerInfo) o;
+            // TODO display detail
+        }
+        else if(o instanceof LocationMarkerInfo) {
+            LocationMarkerInfo locationMarkerInfo = (LocationMarkerInfo) o;
+            // TODO display detail
         }
 
-        // Return false to indicate that we have not consumed the event and that we wish
-        // for the default behavior to occur (which is for the camera to move such that the
-        // marker is centered and for the marker's info window to open, if it has one).
         return false;
     }
+
+    private class LocationMarkerInfo {
+        private final String locationTitle;
+        private final LatLng latLng;
+
+        public LocationMarkerInfo(String locationTitle, LatLng latLng) {
+            this.locationTitle = locationTitle;
+            this.latLng = latLng;
+        }
+
+        public String getLocationTitle() {
+            return locationTitle;
+        }
+
+        public LatLng getLatLng() {
+            return latLng;
+        }
+    }
+
+    private class PhotoMarkerInfo {
+        private final String currentPhotoPath;
+        private final LatLng latLng;
+
+        public PhotoMarkerInfo(String currentPhotoPath, LatLng latLng) {
+            this.currentPhotoPath = currentPhotoPath;
+            this.latLng = latLng;
+        }
+
+        public String getCurrentPhotoPath() {
+            return currentPhotoPath;
+        }
+
+        public LatLng getLatLng() {
+            return latLng;
+        }
+    }
+
 }

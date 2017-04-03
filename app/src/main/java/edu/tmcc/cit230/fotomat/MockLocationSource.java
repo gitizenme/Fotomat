@@ -23,15 +23,19 @@ public class MockLocationSource implements LocationSource {
     private static final double DELTA_LAT = 0.05;
     private static final double DELTA_LON = 0.05;
 
-    private static final long UPDATE_PERIOD = TimeUnit.SECONDS.toMillis(2);
+    private static final long UPDATE_PERIOD = TimeUnit.SECONDS.toMillis(5);
 
     private final Handler handler = new Handler();
+    private final Location currentLocation;
+    private final long updatePeriod;
     private LatLng lastCoordinate = center;
     private OnLocationChangedListener listener;
 
-    public MockLocationSource(Location mCurrentLocation) {
-        if(mCurrentLocation != null) {
-            center = new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+    public MockLocationSource(Location currentLocation, long updatePeriod) {
+        this.currentLocation = currentLocation;
+        this.updatePeriod = updatePeriod;
+        if(currentLocation != null) {
+            center = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
         }
         lastCoordinate = center;
     }
