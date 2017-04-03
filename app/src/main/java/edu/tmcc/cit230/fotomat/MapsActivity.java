@@ -4,16 +4,19 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
+import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -36,12 +39,7 @@ import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, LocationListener, GoogleApiClient.OnConnectionFailedListener, GoogleMap.OnMarkerClickListener, LocationSource.OnLocationChangedListener {
-
-    // TODO: migrate code from MapsAndLocation example to this activity
-    // TODO: load photo and generate a thumbnail, create Marker, add to Map
-
-
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, LocationListener, GoogleApiClient.OnConnectionFailedListener, LocationSource.OnLocationChangedListener, GoogleMap.InfoWindowAdapter {
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "requestLocationUpdates";
     private static final String LOCATION_KEY = "location";
     private static final String LAST_UPDATED_TIME_STRING_KEY = "lastUpdatedTimeString";
@@ -126,7 +124,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     protected void stopLocationUpdates() {
-        if(mGoogleApiClient.isConnected()) {
+        if (mGoogleApiClient.isConnected()) {
             LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
         }
     }
@@ -136,9 +134,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (requestCode == TAKE_A_PHOTO) {
             if (resultCode == RESULT_OK) {
                 mCurrentPhotoPath = data.getStringExtra(PhotoActivity.EXTRA_PHOTO_URL);
-                // TODO do something with the photo URL
-                // Ex: photoUrl: /storage/emulated/0/Pictures/JPEG_20170402_110614_1505746453.jpg
-                Log.d(MapsActivity.TAG, "photoUrl: " + mCurrentPhotoPath);
                 AddMarkerToMap("Photo", mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
             }
         }
@@ -167,6 +162,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         mMap.setMyLocationEnabled(true);
+        mMap.setInfoWindowAdapter(this);
     }
 
 
@@ -179,45 +175,53 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         AddPolyLineToMap(mLastLocation, mCurrentLocation);
         mMarkerArray.add(marker);
 
-        if(mCurrentPhotoPath != null && mCurrentPhotoPath.isEmpty() == false) {
-            String markerPhoto = mCurrentPhotoPath;
+        if (mCurrentPhotoPath != null && mCurrentPhotoPath.isEmpty() == false) {
+            String markerPhotoPath = mCurrentPhotoPath;
             mCurrentPhotoPath = null;
 
-            BitmapFactory.Options bmOptions = new BitmapFactory.Options();
-            bmOptions.inJustDecodeBounds = true;
-            BitmapFactory.decodeFile(markerPhoto, bmOptions);
-            int photoW = bmOptions.outWidth;
-            int photoH = bmOptions.outHeight;
+            Bitmap bitmap = getPhotoThumbnail(markerPhotoPath);
 
-            // Determine how much to scale down the image
-            int scaleFactor = Math.min(photoW/80, photoH/80);
-
-            // Decode the image file into a Bitmap sized to fill the View
-            bmOptions.inJustDecodeBounds = false;
-            bmOptions.inSampleSize = scaleFactor;
-
-            Bitmap bitmap = BitmapFactory.decodeFile(markerPhoto, bmOptions);
             marker.setIcon(BitmapDescriptorFactory.fromBitmap(bitmap));
             marker.setTitle(String.format("%s-%s: %.3f,%.3f", locationTitle, mMarkerArray.size(), lat, lon));
-            marker.setTag(new PhotoMarkerInfo(mCurrentPhotoPath, latLng));
-        }
-        else {
+            marker.setTag(new PhotoMarkerInfo(markerPhotoPath, latLng));
+        } else {
             marker.setTitle(locationTitle);
             marker.setTag(new LocationMarkerInfo(locationTitle, latLng));
         }
 
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(new CameraPosition.Builder()
-            .target(latLng)
-            .zoom(13)   // City
-            .bearing(0) // North
-            .tilt(30)
-            .build()));
+                .target(latLng)
+                .zoom(13)   // City
+                .bearing(0) // North
+                .tilt(30)
+                .build()));
+    }
+
+    private Bitmap getPhotoSized(String markerPhoto, int scale) {
+        BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+        bmOptions.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(markerPhoto, bmOptions);
+        int photoW = bmOptions.outWidth;
+        int photoH = bmOptions.outHeight;
+
+        // Determine how much to scale down the image
+        int scaleFactor = Math.min(photoW / scale, photoH / scale);
+
+        // Decode the image file into a Bitmap sized to fill the View
+        bmOptions.inJustDecodeBounds = false;
+        bmOptions.inSampleSize = scaleFactor;
+
+        return BitmapFactory.decodeFile(markerPhoto, bmOptions);
+    }
+
+    private Bitmap getPhotoThumbnail(String markerPhoto) {
+        return getPhotoSized(markerPhoto, 80);
     }
 
     private void requestPermissions() {
         ActivityCompat.requestPermissions(
                 this,
-                new String[]{ android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION},
+                new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION},
                 REQUEST_CURRENT_LOCATION
         );
     }
@@ -234,7 +238,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             Log.d(MapsActivity.TAG, String.format("Last Known Location: LAT=%s, LON=%s", String.valueOf(mCurrentLocation.getLatitude()), String.valueOf(mCurrentLocation.getLongitude())));
             onLocationChanged(mCurrentLocation);
             updateMapUI("Location");
-            if(mLastLocation == null) {
+            if (mLastLocation == null) {
                 mLastLocation = mCurrentLocation;
             }
         }
@@ -242,7 +246,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void updateMapUI(String locationTitle) {
-        if(mCurrentLocation == null || mLastLocation == null) {
+        if (mCurrentLocation == null || mLastLocation == null) {
             return;
         }
         AddMarkerToMap(locationTitle, mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
@@ -250,10 +254,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void AddPolyLineToMap(Location mLastLocation, Location mCurrentLocation) {
-        if(mCurrentLocation == null || mLastLocation == null) {
+        if (mCurrentLocation == null || mLastLocation == null) {
             return;
         }
-        if(mLastLocation.distanceTo(mCurrentLocation) > 3.0f) { // distance in meters
+        if (mLastLocation.distanceTo(mCurrentLocation) > 3.0f) { // distance in meters
             mMap.addPolyline(new PolylineOptions()
                     .clickable(true)
                     .add(
@@ -282,7 +286,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        if(requestCode == REQUEST_CURRENT_LOCATION) {
+        if (requestCode == REQUEST_CURRENT_LOCATION) {
             if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions();
             }
@@ -327,20 +331,55 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    @Override
-    public boolean onMarkerClick(Marker marker) {
+    private View prepareInfoView(Marker marker){
         Object o = marker.getTag();
 
-        if(o instanceof PhotoMarkerInfo) {
+
+        LinearLayout infoView = new LinearLayout(MapsActivity.this);
+        LinearLayout.LayoutParams infoViewParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        infoView.setOrientation(LinearLayout.HORIZONTAL);
+        infoView.setLayoutParams(infoViewParams);
+
+        if (o instanceof PhotoMarkerInfo) {
             PhotoMarkerInfo photoMarkerInfo = (PhotoMarkerInfo) o;
-            // TODO display detail
+            Bitmap bitmap = getPhotoSized(photoMarkerInfo.currentPhotoPath, 160);
+            ImageView infoImageView = new ImageView(MapsActivity.this);
+            infoImageView.setImageBitmap(bitmap);
+            infoView.addView(infoImageView);
         }
-        else if(o instanceof LocationMarkerInfo) {
-            LocationMarkerInfo locationMarkerInfo = (LocationMarkerInfo) o;
-            // TODO display detail
+        else {
+            ImageView infoImageView = new ImageView(MapsActivity.this);
+            Drawable drawable = getResources().getDrawable(android.R.drawable.ic_dialog_info, this.getTheme());
+            infoImageView.setImageDrawable(drawable);
+            infoView.addView(infoImageView);
         }
 
-        return false;
+        LinearLayout subInfoView = new LinearLayout(MapsActivity.this);
+        LinearLayout.LayoutParams subInfoViewParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        subInfoView.setOrientation(LinearLayout.VERTICAL);
+        subInfoView.setLayoutParams(subInfoViewParams);
+
+        TextView subInfoLat = new TextView(MapsActivity.this);
+        subInfoLat.setText(String.format("Lat: %.3f", marker.getPosition().latitude));
+        TextView subInfoLng = new TextView(MapsActivity.this);
+        subInfoLng.setText(String.format("Lng: %.3f", marker.getPosition().longitude));
+        subInfoView.addView(subInfoLat);
+        subInfoView.addView(subInfoLng);
+        infoView.addView(subInfoView);
+
+        return infoView;
+    }
+
+    @Override
+    public View getInfoWindow(Marker marker) {
+        return null;
+    }
+
+    @Override
+    public View getInfoContents(Marker marker) {
+        return prepareInfoView(marker);
     }
 
     private class LocationMarkerInfo {
