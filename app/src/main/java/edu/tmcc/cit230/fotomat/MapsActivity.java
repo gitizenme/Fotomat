@@ -2,6 +2,8 @@ package edu.tmcc.cit230.fotomat;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -11,31 +13,55 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.LocationSource;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PolylineOptions;
 
 import java.text.DateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, LocationListener, GoogleApiClient.OnConnectionFailedListener, GoogleMap.OnMarkerClickListener, LocationSource.OnLocationChangedListener {
 
+    // TODO: migrate code from MapsAndLocation example to this activity
+    // TODO: load photo and generate a thumbnail, create Marker, add to Map
+
+
+    private static final String REQUESTING_LOCATION_UPDATES_KEY = "requestLocationUpdates";
+    private static final String LOCATION_KEY = "location";
+    private static final String LAST_UPDATED_TIME_STRING_KEY = "lastUpdatedTimeString";
     private static final int REQUEST_CURRENT_LOCATION = 1;
     private static final String TAG = "Fotomat:MapActivity";
+
     private static final int TAKE_A_PHOTO = 1;
     private GoogleMap mMap;
-    private int permissionRequestCount;
     private GoogleApiClient mGoogleApiClient;
     private Location mCurrentLocation;
     private Location mLastLocation;
     private String mLastUpdateTime;
+    private boolean mRequestingLocationUpdates = true;
+    private LocationRequest mLocationRequest;
+    private String mCurrentPhotoPath;
+    private ArrayList<Marker> mMarkerArray = new ArrayList<>();
+
+    public MapsActivity() {
+        mLocationRequest = LocationRequest.create();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,6 +79,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     .addApi(LocationServices.API)
                     .build();
         }
+        updateValuesFromBundle(savedInstanceState);
 
         Button takePhotoButton = (Button) findViewById(R.id.takeAPhoto);
 
@@ -67,12 +94,52 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        savedInstanceState.putBoolean(REQUESTING_LOCATION_UPDATES_KEY, mRequestingLocationUpdates);
+        savedInstanceState.putParcelable(LOCATION_KEY, mCurrentLocation);
+        savedInstanceState.putString(LAST_UPDATED_TIME_STRING_KEY, mLastUpdateTime);
+        super.onSaveInstanceState(savedInstanceState);
+    }
+
+    protected void onStart() {
+        mGoogleApiClient.connect();
+        super.onStart();
+    }
+
+    protected void onStop() {
+        mGoogleApiClient.disconnect();
+        super.onStop();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopLocationUpdates();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mGoogleApiClient.isConnected() && !mRequestingLocationUpdates) {
+            startLocationUpdates();
+        }
+    }
+
+    protected void stopLocationUpdates() {
+        if(mGoogleApiClient.isConnected()) {
+            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
+        }
+    }
+
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == TAKE_A_PHOTO) {
             if (resultCode == RESULT_OK) {
-                String photoUrl = data.getStringExtra(PhotoActivity.EXTRA_PHOTO_URL);
+                mCurrentPhotoPath = data.getStringExtra(PhotoActivity.EXTRA_PHOTO_URL);
                 // TODO do something with the photo URL
-                Log.d(MapsActivity.TAG, "photoUrl: " + photoUrl);
+                // Ex: photoUrl: /storage/emulated/0/Pictures/JPEG_20170402_110614_1505746453.jpg
+                Log.d(MapsActivity.TAG, "photoUrl: " + mCurrentPhotoPath);
+                AddMarkerToMap("Photo", mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
             }
         }
     }
@@ -93,21 +160,66 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             requestPermissions();
             return;
         }
+
+        if (BuildConfig.DEBUG) {
+            MockLocationSource source = new MockLocationSource(mCurrentLocation, 20);
+            source.activate(this);
+        }
+
         mMap.setMyLocationEnabled(true);
     }
 
-    private void requestPermissions() {
-        if(permissionRequestCount < 3) {
-            permissionRequestCount++;
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{ android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION},
-                    REQUEST_CURRENT_LOCATION
-            );
+
+    private void AddMarkerToMap(String locationTitle, double lat, double lon) {
+
+        LatLng latLng = new LatLng(lat, lon);
+        Marker marker = mMap.addMarker(new MarkerOptions()
+                .position(latLng)
+                .anchor(0.5f, 1));
+        AddPolyLineToMap(mLastLocation, mCurrentLocation);
+        mMarkerArray.add(marker);
+
+        if(mCurrentPhotoPath != null && mCurrentPhotoPath.isEmpty() == false) {
+            String markerPhoto = mCurrentPhotoPath;
+            mCurrentPhotoPath = null;
+
+            BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+            bmOptions.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(markerPhoto, bmOptions);
+            int photoW = bmOptions.outWidth;
+            int photoH = bmOptions.outHeight;
+
+            // Determine how much to scale down the image
+            int scaleFactor = Math.min(photoW/80, photoH/80);
+
+            // Decode the image file into a Bitmap sized to fill the View
+            bmOptions.inJustDecodeBounds = false;
+            bmOptions.inSampleSize = scaleFactor;
+
+            Bitmap bitmap = BitmapFactory.decodeFile(markerPhoto, bmOptions);
+            marker.setIcon(BitmapDescriptorFactory.fromBitmap(bitmap));
+            marker.setTitle(String.format("%s-%s: %.3f,%.3f", locationTitle, mMarkerArray.size(), lat, lon));
+            marker.setTag(new PhotoMarkerInfo(mCurrentPhotoPath, latLng));
         }
         else {
-            Log.e(MapsActivity.TAG, String.format("Attemped to request permissions %d times. User did not grant permission.", permissionRequestCount));
+            marker.setTitle(locationTitle);
+            marker.setTag(new LocationMarkerInfo(locationTitle, latLng));
         }
+
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(new CameraPosition.Builder()
+            .target(latLng)
+            .zoom(13)   // City
+            .bearing(0) // North
+            .tilt(30)
+            .build()));
+    }
+
+    private void requestPermissions() {
+        ActivityCompat.requestPermissions(
+                this,
+                new String[]{ android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION},
+                REQUEST_CURRENT_LOCATION
+        );
     }
 
     @Override
@@ -118,32 +230,153 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         mCurrentLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-
-        if(mCurrentLocation != null) {
-            startLocationUpdates(mCurrentLocation);
+        if (mCurrentLocation != null) {
+            Log.d(MapsActivity.TAG, String.format("Last Known Location: LAT=%s, LON=%s", String.valueOf(mCurrentLocation.getLatitude()), String.valueOf(mCurrentLocation.getLongitude())));
+            onLocationChanged(mCurrentLocation);
+            updateMapUI("Location");
+            if(mLastLocation == null) {
+                mLastLocation = mCurrentLocation;
+            }
         }
-
+        startLocationUpdates();
     }
 
-    private void startLocationUpdates(Location location) {
-        Log.d(MapsActivity.TAG, "Potential location change...");
-        if(mLastLocation.distanceTo(location) > 0.0f) {
-            mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
-            if (location != null) {
-                Log.d(MapsActivity.TAG, String.format("Last Known Location: LAT=%s, LON=%s", String.valueOf(location.getLatitude()), String.valueOf(location.getLongitude())));
-                mLastLocation = mCurrentLocation;
-                mCurrentLocation = location;
+    private void updateMapUI(String locationTitle) {
+        if(mCurrentLocation == null || mLastLocation == null) {
+            return;
+        }
+        AddMarkerToMap(locationTitle, mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+        AddPolyLineToMap(mLastLocation, mCurrentLocation);
+    }
+
+    private void AddPolyLineToMap(Location mLastLocation, Location mCurrentLocation) {
+        if(mCurrentLocation == null || mLastLocation == null) {
+            return;
+        }
+        if(mLastLocation.distanceTo(mCurrentLocation) > 3.0f) { // distance in meters
+            mMap.addPolyline(new PolylineOptions()
+                    .clickable(true)
+                    .add(
+                            new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()),
+                            new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude())));
+        }
+    }
+
+    private void startLocationUpdates() {
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions();
+            return;
+        }
+        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        Log.d(TAG, "onConnectionSuspended called");
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.d(TAG, "onConnectionSuspended called");
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if(requestCode == REQUEST_CURRENT_LOCATION) {
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions();
+            }
+        }
+    }
+
+    private void updateValuesFromBundle(Bundle savedInstanceState) {
+        if (savedInstanceState != null) {
+            // Update the value of mRequestingLocationUpdates from the Bundle, and
+            // make sure that the Start Updates and Stop Updates buttons are
+            // correctly enabled or disabled.
+            if (savedInstanceState.keySet().contains(REQUESTING_LOCATION_UPDATES_KEY)) {
+                mRequestingLocationUpdates = savedInstanceState.getBoolean(
+                        REQUESTING_LOCATION_UPDATES_KEY);
+            }
+
+            // Update the value of mCurrentLocation from the Bundle and update the
+            // UI to show the correct latitude and longitude.
+            if (savedInstanceState.keySet().contains(LOCATION_KEY)) {
+                // Since LOCATION_KEY was found in the Bundle, we can be sure that
+                // mCurrentLocationis not null.
+                mCurrentLocation = savedInstanceState.getParcelable(LOCATION_KEY);
+            }
+
+            // Update the value of mLastUpdateTime from the Bundle and update the UI.
+            if (savedInstanceState.keySet().contains(LAST_UPDATED_TIME_STRING_KEY)) {
+                mLastUpdateTime = savedInstanceState.getString(
+                        LAST_UPDATED_TIME_STRING_KEY);
             }
         }
     }
 
     @Override
-    public void onConnectionSuspended(int i) {
-
+    public void onLocationChanged(Location location) {
+        Log.d(MapsActivity.TAG, "Potential location change...");
+        mLastUpdateTime = DateFormat.getTimeInstance().format(new Date());
+        if (location != null) {
+            Log.d(MapsActivity.TAG, String.format("Last Known Location: LAT=%s, LON=%s", String.valueOf(location.getLatitude()), String.valueOf(location.getLongitude())));
+            updateMapUI("Current Location");
+            mLastLocation = mCurrentLocation;
+            mCurrentLocation = location;
+        }
     }
 
     @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+    public boolean onMarkerClick(Marker marker) {
+        Object o = marker.getTag();
 
+        if(o instanceof PhotoMarkerInfo) {
+            PhotoMarkerInfo photoMarkerInfo = (PhotoMarkerInfo) o;
+            // TODO display detail
+        }
+        else if(o instanceof LocationMarkerInfo) {
+            LocationMarkerInfo locationMarkerInfo = (LocationMarkerInfo) o;
+            // TODO display detail
+        }
+
+        return false;
     }
+
+    private class LocationMarkerInfo {
+        private final String locationTitle;
+        private final LatLng latLng;
+
+        public LocationMarkerInfo(String locationTitle, LatLng latLng) {
+            this.locationTitle = locationTitle;
+            this.latLng = latLng;
+        }
+
+        public String getLocationTitle() {
+            return locationTitle;
+        }
+
+        public LatLng getLatLng() {
+            return latLng;
+        }
+    }
+
+    private class PhotoMarkerInfo {
+        private final String currentPhotoPath;
+        private final LatLng latLng;
+
+        public PhotoMarkerInfo(String currentPhotoPath, LatLng latLng) {
+            this.currentPhotoPath = currentPhotoPath;
+            this.latLng = latLng;
+        }
+
+        public String getCurrentPhotoPath() {
+            return currentPhotoPath;
+        }
+
+        public LatLng getLatLng() {
+            return latLng;
+        }
+    }
+
 }
