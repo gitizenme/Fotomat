@@ -1,4 +1,4 @@
-package edu.tmcc.cit230.fotomat;
+package edu.tmcc.cit128.fotomat;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -64,10 +64,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_maps);
+        setContentView(edu.tmcc.cit128.fotomat.R.layout.activity_maps);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
+                .findFragmentById(edu.tmcc.cit128.fotomat.R.id.map);
         mapFragment.getMapAsync(this);
 
         if (mGoogleApiClient == null) {
@@ -79,7 +79,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         updateValuesFromBundle(savedInstanceState);
 
-        Button takePhotoButton = (Button) findViewById(R.id.takeAPhoto);
+        Button takePhotoButton = (Button) findViewById(edu.tmcc.cit128.fotomat.R.id.takeAPhoto);
 
         takePhotoButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -165,37 +165,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setInfoWindowAdapter(this);
     }
 
-
-    private void AddMarkerToMap(String locationTitle, double lat, double lon) {
-
-        LatLng latLng = new LatLng(lat, lon);
-        Marker marker = mMap.addMarker(new MarkerOptions()
-                .position(latLng)
-                .anchor(0.5f, 1));
-        mMarkerArray.add(marker);
-
-        if (mCurrentPhotoPath != null && mCurrentPhotoPath.isEmpty() == false) {
-            String markerPhotoPath = mCurrentPhotoPath;
-            mCurrentPhotoPath = null;
-
-            Bitmap bitmap = getPhotoThumbnail(markerPhotoPath);
-
-            marker.setIcon(BitmapDescriptorFactory.fromBitmap(bitmap));
-            marker.setTitle(String.format("%s-%s: %.3f,%.3f", locationTitle, mMarkerArray.size(), lat, lon));
-            marker.setTag(new PhotoMarkerInfo("Photo", latLng, markerPhotoPath));
-        } else {
-            marker.setTitle(locationTitle);
-            marker.setTag(new LocationMarkerInfo(locationTitle, latLng));
-        }
-
-        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(new CameraPosition.Builder()
-                .target(latLng)
-                .zoom(13)   // City
-                .bearing(0) // North
-                .tilt(30)
-                .build()));
-    }
-
     private Bitmap getPhotoSized(String markerPhoto, int scale) {
         BitmapFactory.Options bmOptions = new BitmapFactory.Options();
         bmOptions.inJustDecodeBounds = true;
@@ -244,26 +213,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         startLocationUpdates();
     }
 
-    private void updateMapUI(String locationTitle) {
-        if (mCurrentLocation == null || mLastLocation == null) {
-            return;
-        }
-        AddMarkerToMap(locationTitle, mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
-        AddPolyLineToMap(mLastLocation, mCurrentLocation);
-    }
-
-    private void AddPolyLineToMap(Location mLastLocation, Location mCurrentLocation) {
-        if (mCurrentLocation == null || mLastLocation == null) {
-            return;
-        }
-        if (mLastLocation.distanceTo(mCurrentLocation) > 3.0f) { // distance in meters
-            mMap.addPolyline(new PolylineOptions()
-                    .clickable(true)
-                    .add(
-                            new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()),
-                            new LatLng(mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude())));
-        }
-    }
 
     private void startLocationUpdates() {
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
