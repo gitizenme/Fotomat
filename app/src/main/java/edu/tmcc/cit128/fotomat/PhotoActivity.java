@@ -1,6 +1,5 @@
-package edu.tmcc.cit230.fotomat;
+package edu.tmcc.cit128.fotomat;
 
-import android.*;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
