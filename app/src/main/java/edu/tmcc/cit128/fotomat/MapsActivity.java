@@ -39,7 +39,13 @@ import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, LocationListener, GoogleApiClient.OnConnectionFailedListener, LocationSource.OnLocationChangedListener, GoogleMap.InfoWindowAdapter {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,
+        GoogleApiClient.ConnectionCallbacks,
+        LocationListener,
+        GoogleApiClient.OnConnectionFailedListener,
+        LocationSource.OnLocationChangedListener,
+        GoogleMap.InfoWindowAdapter {
+
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "requestLocationUpdates";
     private static final String LOCATION_KEY = "location";
     private static final String LAST_UPDATED_TIME_STRING_KEY = "lastUpdatedTimeString";
