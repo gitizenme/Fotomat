@@ -285,57 +285,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    private View prepareInfoView(Marker marker) {
-        Object o = marker.getTag();
-
-
-        LinearLayout infoView = new LinearLayout(MapsActivity.this);
-        LinearLayout.LayoutParams infoViewParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        infoView.setOrientation(LinearLayout.HORIZONTAL);
-        infoView.setLayoutParams(infoViewParams);
-
-        String markerDateTime = "";
-        if (o instanceof PhotoMarkerInfo) {
-            PhotoMarkerInfo photoMarkerInfo = (PhotoMarkerInfo) o;
-            Bitmap bitmap = getPhotoSized(photoMarkerInfo.getCurrentPhotoPath(), 160);
-            ImageView infoImageView = new ImageView(MapsActivity.this);
-            infoImageView.setImageBitmap(bitmap);
-            infoView.addView(infoImageView);
-            markerDateTime = String.format("Taken: %s", DateFormat.getDateTimeInstance().format(photoMarkerInfo.getTimestamp()));
-        } else {
-            LocationMarkerInfo locationMarkerInfo = (LocationMarkerInfo) o;
-            ImageView infoImageView = new ImageView(MapsActivity.this);
-            Drawable drawable = getResources().getDrawable(android.R.drawable.ic_dialog_info, this.getTheme());
-            infoImageView.setImageDrawable(drawable);
-            infoView.addView(infoImageView);
-            markerDateTime = String.format("Visited: %s", DateFormat.getDateTimeInstance().format(locationMarkerInfo.getTimestamp()));
-        }
-
-        LinearLayout subInfoView = new LinearLayout(MapsActivity.this);
-        LinearLayout.LayoutParams subInfoViewParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        subInfoView.setOrientation(LinearLayout.VERTICAL);
-        subInfoView.setLayoutParams(subInfoViewParams);
-
-        TextView subInfoLat = new TextView(MapsActivity.this);
-        subInfoLat.setText(String.format("Lat: %.3f", marker.getPosition().latitude));
-        subInfoView.addView(subInfoLat);
-
-        TextView subInfoLng = new TextView(MapsActivity.this);
-        subInfoLng.setText(String.format("Lng: %.3f", marker.getPosition().longitude));
-        subInfoView.addView(subInfoLng);
-
-        if (!markerDateTime.isEmpty()) {
-            TextView photoTimeTextView = new TextView(MapsActivity.this);
-            photoTimeTextView.setText(markerDateTime);
-            subInfoView.addView(photoTimeTextView);
-        }
-
-        infoView.addView(subInfoView);
-
-        return infoView;
-    }
 
     @Override
     public View getInfoWindow(Marker marker) {
