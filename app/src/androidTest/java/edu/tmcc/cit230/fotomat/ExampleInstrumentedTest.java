@@ -1,4 +1,4 @@
-package edu.tmcc.cit128.fotomat;
+package edu.tmcc.cit230.fotomat;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;

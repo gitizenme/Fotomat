@@ -1,4 +1,4 @@
-package edu.tmcc.cit128.fotomat;
+package edu.tmcc.cit230.fotomat;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -8,13 +8,11 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Environment;
-import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
@@ -97,13 +95,13 @@ public class PhotoActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setContentView(edu.tmcc.cit128.fotomat.R.layout.activity_photo);
+        setContentView(edu.tmcc.cit230.fotomat.R.layout.activity_photo);
 
         mVisible = true;
-        mControlsView = findViewById(edu.tmcc.cit128.fotomat.R.id.fullscreen_content_controls);
+        mControlsView = findViewById(edu.tmcc.cit230.fotomat.R.id.fullscreen_content_controls);
 
 
-        mImageView = (ImageView) findViewById(edu.tmcc.cit128.fotomat.R.id.photo_view);
+        mImageView = (ImageView) findViewById(edu.tmcc.cit230.fotomat.R.id.photo_view);
 
         // Set up the user interaction to manually show or hide the system UI.
         mImageView.setOnClickListener(new View.OnClickListener() {
@@ -113,8 +111,8 @@ public class PhotoActivity extends AppCompatActivity {
             }
         });
 
-        findViewById(edu.tmcc.cit128.fotomat.R.id.take_picture_button).setOnTouchListener(mDelayHideTouchListener);
-        findViewById(edu.tmcc.cit128.fotomat.R.id.take_picture_button).setOnClickListener(new View.OnClickListener() {
+        findViewById(edu.tmcc.cit230.fotomat.R.id.take_picture_button).setOnTouchListener(mDelayHideTouchListener);
+        findViewById(edu.tmcc.cit230.fotomat.R.id.take_picture_button).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 dispatchTakePictureIntent();

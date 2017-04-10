@@ -1,10 +1,9 @@
-package edu.tmcc.cit128.fotomat;
+package edu.tmcc.cit230.fotomat;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -14,26 +13,18 @@ import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.LocationSource;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
-import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.PolylineOptions;
 
 import java.text.DateFormat;
 import java.util.ArrayList;
@@ -70,10 +61,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(edu.tmcc.cit128.fotomat.R.layout.activity_maps);
+        setContentView(edu.tmcc.cit230.fotomat.R.layout.activity_maps);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(edu.tmcc.cit128.fotomat.R.id.map);
+                .findFragmentById(edu.tmcc.cit230.fotomat.R.id.map);
         mapFragment.getMapAsync(this);
 
         if (mGoogleApiClient == null) {
@@ -85,7 +76,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         updateValuesFromBundle(savedInstanceState);
 
-        Button takePhotoButton = (Button) findViewById(edu.tmcc.cit128.fotomat.R.id.takeAPhoto);
+        Button takePhotoButton = (Button) findViewById(edu.tmcc.cit230.fotomat.R.id.takeAPhoto);
 
         takePhotoButton.setOnClickListener(new View.OnClickListener() {
             @Override
